@@ -4310,6 +4310,10 @@ onMounted(() => {
   loadTaskTemplates();
   // 监听Token刷新等待事件
   $emit.on("token:refresh:waiting", handleTokenRefreshWaiting);
+  window.executeScheduledTask = executeScheduledTask;
+  window.scheduledTasks = () => scheduledTasks.value;
+  window.clearLogs = clearLogs;
+  window.getLogs = () => logs.value;
 });
 
 // Cleanup countdown interval on unmount
