@@ -1837,10 +1837,29 @@ const applyLineup = async (lineup) => {
         }
 
         try {
+          // Get current attachment of target hero before exchange
+          const targetHeroData = heroes[String(targetHero.heroId)];
+          const targetCurrentAttachment = targetHeroData?.attachmentUid;
+
           await tokenStore.sendMessageWithPromise(tokenId, "hero_exchange", {
             heroId: currentHolderId,
             targetHeroId: targetHero.heroId,
           });
+
+          // Update attachment mappings after exchange
+          const targetAttachment = targetHero.attachmentUid;
+
+          // Update mapping for the attachment target hero should receive
+          if (targetAttachment && targetAttachment !== -1) {
+            delete attachmentToHero[targetAttachment];
+            attachmentToHero[targetAttachment] = targetHero.heroId;
+          }
+
+          // Update mapping for the attachment current holder should receive
+          if (targetCurrentAttachment && targetCurrentAttachment !== -1) {
+            delete attachmentToHero[targetCurrentAttachment];
+            attachmentToHero[targetCurrentAttachment] = currentHolderId;
+          }
         } catch (err) {}
         await delay(COMMAND_DELAY);
       }
@@ -1859,66 +1878,59 @@ const applyLineup = async (lineup) => {
     currentHeroIds.clear();
     currentHeroes.forEach((h) => currentHeroIds.add(h.heroId));
 
-    for (const hero of [...currentHeroes]) {
-      if (!targetHeroIds.has(hero.heroId)) {
-        try {
-          await tokenStore.sendMessageWithPromise(
-            tokenId,
-            "hero_gobackbattle",
-            {
-              slot: hero.position,
-            },
-          );
-        } catch (err) {}
-        await delay(COMMAND_DELAY);
-      }
+    // Find a purple hero (color=1) with level=1 and all equipment level=1
+    const purpleLevel1Hero = Object.entries(heroes).find(([id, hero]) => {
+      if (hero.color !== 1 || hero.level !== 1) return false;
+      const equipment = hero.equipment || {};
+      return [1, 2, 3, 4].every((slot) => {
+        const equip = equipment[String(slot)];
+        return equip && equip.level === 1;
+      });
+    });
+    // 如果找到紫色等级为1的英雄，将其移动到位置5的空位
+    if (purpleLevel1Hero) {
+      const [heroId, heroData] = purpleLevel1Hero;
+      console.log(
+        `Found purple level 1 hero: ${heroId}, all equipment level are 1`,
+      );
+      try {
+        await tokenStore.sendMessageWithPromise(tokenId, "hero_gointobattle", {
+          heroId: heroId,
+          slot: 4,
+        });
+      } catch (err) {}
+      await delay(COMMAND_DELAY);
+    }
+    //下掉1，2，3，4位置的英雄
+    for (let slot = 0; slot < 4; slot++) {
+      try {
+        await tokenStore.sendMessageWithPromise(tokenId, "hero_gobackbattle", {
+          slot: slot,
+        });
+      } catch (err) {}
+      await delay(COMMAND_DELAY);
+    }
+    //上阵目标英雄到目标位置上
+    for (const targetHero of targetHeroes) {
+      try {
+        await tokenStore.sendMessageWithPromise(tokenId, "hero_gointobattle", {
+          heroId: targetHero.heroId,
+          slot: targetHero.position,
+        });
+      } catch (err) {}
+      await delay(COMMAND_DELAY);
     }
 
-    await delay(COMMAND_DELAY);
-    const data2 = await fetchLatestData();
-    await delay(COMMAND_DELAY);
-    currentHeroes = getTeamHeroes(data2.teamInfo);
-
-    for (const targetHero of targetHeroes) {
-      const currentHero = currentHeroes.find(
-        (h) => h.heroId === targetHero.heroId,
-      );
-      if (!currentHero) {
-        try {
-          await tokenStore.sendMessageWithPromise(
-            tokenId,
-            "hero_gointobattle",
-            {
-              heroId: targetHero.heroId,
-              slot: targetHero.position,
-            },
-          );
-        } catch (err) {}
-        await delay(COMMAND_DELAY);
-      } else if (currentHero.position !== targetHero.position) {
-        try {
-          await tokenStore.sendMessageWithPromise(
-            tokenId,
-            "hero_gobackbattle",
-            {
-              slot: currentHero.position,
-            },
-          );
-          await delay(COMMAND_DELAY);
-          try {
-            await tokenStore.sendMessageWithPromise(
-              tokenId,
-              "hero_gointobattle",
-              {
-                heroId: targetHero.heroId,
-                slot: targetHero.position,
-              },
-            );
-          } catch (err) {}
-          await delay(COMMAND_DELAY);
-        } catch (err) {}
-        await delay(COMMAND_DELAY);
-      }
+    // Check if there's any target hero for slot 4
+    const hasSlot4Hero = targetHeroes.some((hero) => hero.position === 4);
+    if (!hasSlot4Hero) {
+      // If no target hero for slot 4, remove the hero in slot 4
+      try {
+        await tokenStore.sendMessageWithPromise(tokenId, "hero_gobackbattle", {
+          slot: 4,
+        });
+      } catch (err) {}
+      await delay(COMMAND_DELAY);
     }
 
     const hasLevelData = lineup.heroes.some((h) => h.level && h.level > 0);
@@ -2018,10 +2030,11 @@ const applyLineup = async (lineup) => {
                 heroId: currentHolderId,
               },
             );
+            delete artifactToHero[artifactId];
           } catch (err) {}
+
           await delay(COMMAND_DELAY);
         }
-
         try {
           await tokenStore.sendMessageWithPromise(tokenId, "artifact_load", {
             heroId: targetHero.heroId,
@@ -2029,6 +2042,7 @@ const applyLineup = async (lineup) => {
             pearlId: pearlId,
           });
           fishApplied++;
+          artifactToHero[artifactId] = targetHero.heroId;
         } catch (err) {}
         await delay(COMMAND_DELAY);
       }
