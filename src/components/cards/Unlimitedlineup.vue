@@ -2021,6 +2021,15 @@ const applyLineup = async (lineup) => {
           continue;
         }
 
+        // Check if target hero currently holds any artifact
+        const targetHeroCurrentArtifactId = Object.entries(artifactToHero).find(
+          ([artId, heroId]) => heroId === targetHero.heroId,
+        )?.[0];
+
+        if (targetHeroCurrentArtifactId) {
+          delete artifactToHero[targetHeroCurrentArtifactId];
+        }
+
         if (currentHolderId) {
           try {
             await tokenStore.sendMessageWithPromise(
