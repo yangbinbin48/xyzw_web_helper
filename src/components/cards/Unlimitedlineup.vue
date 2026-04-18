@@ -1501,7 +1501,7 @@ const saveCurrentLineup = async () => {
         position: hero.position,
         heroId: hero.heroId,
         level: teamHeroInfo?.level || null,
-        attachmentUid: hero.attachmentUid || null,
+        attachmentUid: heroData?.attachmentUid || null,
         fishId: fishId || null,
         pearlId: pearlId,
         skillId: pearlData?.skillId || null,
