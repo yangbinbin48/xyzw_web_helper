@@ -1494,7 +1494,7 @@ const saveCurrentLineup = async () => {
       const artifactId = heroData?.artifactId || hero.artifactId || null;
       const teamHeroInfo = teamInfo[hero.position];
       const fishId = artifactId ? fishAssignments[artifactId] : null;
-      const pearlId = teamHeroInfo?.pearlId || null;
+      const pearlId = heroData?.pearlId || null;
       const pearlData = pearlMap[pearlId];
       const slotMap = pearlData?.slotMap || null;
       return {
