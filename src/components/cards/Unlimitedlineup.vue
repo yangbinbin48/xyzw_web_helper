@@ -2068,8 +2068,27 @@ const applyLineup = async (lineup) => {
         .filter((h) => h.pearlId)
         .map((h) => h.pearlId);
 
-      // Step 1: Unload all skills from pearlIdsToHandle
-      for (const pearlId of pearlIdsToHandle) {
+      // Step 1: Unload skills from all relevant pearls
+      // 1. Collect target skill IDs from targetHeroes
+      const targetSkillIds = new Set(
+        targetHeroes.filter((h) => h.skillId).map((h) => h.skillId),
+      );
+
+      // 2. Collect all pearl IDs that need to be unloaded
+      const pearlsToUnload = new Set();
+
+      // Add pearlIdsToHandle (pearls with targetHero.pearlId)
+      pearlIdsToHandle.forEach((pearlId) => pearlsToUnload.add(pearlId));
+
+      // Add pearls that contain targetSkillIds
+      Object.entries(latestPearlMap).forEach(([pid, pearlData]) => {
+        if (pearlData?.skillId && targetSkillIds.has(pearlData.skillId)) {
+          pearlsToUnload.add(Number(pid));
+        }
+      });
+
+      // 3. Unload skills from collected pearls
+      for (const pearlId of pearlsToUnload) {
         const currentPearlData = latestPearlMap[pearlId];
         const currentSkillId = currentPearlData?.skillId || null;
 
@@ -2082,6 +2101,7 @@ const applyLineup = async (lineup) => {
                 pearlId: pearlId,
               },
             );
+            latestPearlMap[pearlId].skillId = null;
           } catch (err) {}
           await delay(COMMAND_DELAY);
         }
