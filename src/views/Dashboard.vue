@@ -289,8 +289,20 @@ const handleExportState = async () => {
     };
 
     try {
-      // 尝试使用File System Access API（现代浏览器支持）
-      if (window.showSaveFilePicker) {
+      // 检测是否是 Android WebView
+      if (window.AndroidDownload) {
+        // Android WebView 的保存方式
+        const jsonContent = JSON.stringify(stateData, null, 2);
+        const base64Content = btoa(unescape(encodeURIComponent(jsonContent)));
+        window.AndroidDownload.downloadFile(
+          options.suggestedName,
+          base64Content,
+          "application/json",
+        );
+        console.info(`状态数据已下载为: ${options.suggestedName}`);
+        message.success(`状态数据已成功下载为: ${options.suggestedName}`);
+        return true;
+      } else if (window.showSaveFilePicker) {
         const handle = await window.showSaveFilePicker(options);
         const writable = await handle.createWritable();
         await writable.write(JSON.stringify(stateData, null, 2));
