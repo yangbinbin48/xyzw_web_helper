@@ -429,7 +429,7 @@ const createSchedule = async (task, cronExpression) => {
       method: "POST",
       body: JSON.stringify({
         name: `${task.id.replace("_", "-")}`, // 使用任务ID作为名称，避免汉字
-        isEnabled: task.enable,
+        isEnabled: task.enabled,
         isExclusive: true,
         cronExpression: cronExpression,
         timezone: "Asia/Shanghai",
