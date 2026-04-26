@@ -456,6 +456,40 @@ const createSchedule = async (task, cronExpression) => {
   }
 };
 
+const updateSchedule = async (scheduleId, task, cronExpression) => {
+  console.info(`开始更新定时任务 ${task.name}...`);
+  try {
+    // 调用 Apify API 更新定时任务
+    const response = await request(`/schedules/${scheduleId}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        isEnabled: task.enabled,
+        isExclusive: true,
+        cronExpression: cronExpression,
+        timezone: "Asia/Shanghai",
+        description: `Schedule for task: ${task.name}`,
+        title: `KOFSch-${task.name}`,
+        actions: [
+          {
+            type: "RUN_ACTOR",
+            actorId: actorId.value,
+            runOptions: {
+              build: "latest",
+              memoryMbytes: 512,
+              timeoutSecs: 3600,
+            },
+          },
+        ],
+      }),
+    });
+    console.info(`成功更新定时任务，ID: ${response.data.id}`);
+    return true;
+  } catch (err) {
+    console.error("更新定时任务时发生网络异常:", err);
+    return false;
+  }
+};
+
 // 实现 syncSchedules 函数，从 stateData 中读取 scheduledTasks 并创建定时任务
 const syncSchedules = async () => {
   console.info("开始同步定时任务...");
@@ -473,12 +507,35 @@ const syncSchedules = async () => {
 
     if (scheduledTasks.length > 0) {
       console.info(`发现 ${scheduledTasks.length} 个定时任务`);
+      const resp = await request("/schedules", {
+        method: "GET",
+      });
+      const apifySchedules = resp.data.items || [];
       for (const task of scheduledTasks) {
         console.info(`处理定时任务: ${task.name}`);
         let cronExpression = task.cronExpression;
         if (task.runType === "daily" && task.runTime) {
           const [hour = 0, minute = 0] = task.runTime.split(":").map(Number);
           cronExpression = `${minute} ${hour} * * *`;
+        }
+        const existing = apifySchedules.find((schedule) => {
+          return schedule.title === `KOFSch-${task.name}`;
+        });
+        if (existing) {
+          // 检查是否相同（enable, cronExpression, actorId）
+          const isSame =
+            existing.isEnabled === task.enabled &&
+            existing.cronExpression === cronExpression &&
+            existing.actions?.[0]?.actorId === actorId.value;
+
+          if (isSame) {
+            console.info(`定时任务 ${task.name} 已存在且相同，跳过`);
+            continue;
+          } else {
+            console.info(`定时任务 ${task.name} 已存在但不同，执行更新`);
+            await updateSchedule(existing.id, task, cronExpression);
+            continue;
+          }
         }
         await createSchedule(task, cronExpression);
       }
