@@ -498,6 +498,16 @@ const createSchedule = async (task, cronExpression) => {
               memoryMbytes: 512,
               timeoutSecs: 3600,
             },
+            runInput: {
+              body: JSON.stringify({
+                start_urls: [
+                  {
+                    url: "https://apify.com",
+                  },
+                ],
+              }),
+              contentType: "application/json",
+            },
           },
         ],
       }),
