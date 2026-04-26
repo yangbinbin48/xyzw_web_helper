@@ -359,11 +359,12 @@ async function request(path, options) {
     },
   });
 
-  if (!res.ok && res.status !== 404) {
-    throw new Error("Apify API error: " + res.status);
-  }
   const json = await res.json();
-  return res.status === 404 ? null : json;
+
+  if (!res.ok) {
+    throw new Error("Apify API error: " + json);
+  }
+  return json;
 }
 
 // 实现 createActor 函数，调用 Apify API 创建 actor
