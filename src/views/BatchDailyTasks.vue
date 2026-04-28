@@ -4301,6 +4301,32 @@ const handleTokenRefreshWaiting = (data) => {
   });
 };
 
+const stopScheduler = () => {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+
+  // 移除Token刷新等待事件监听
+  $emit.off("token:refresh:waiting", handleTokenRefreshWaiting);
+
+  // Cleanup task scheduler intervals
+  if (intervalId.value) {
+    clearInterval(intervalId.value);
+    intervalId.value = null;
+    addLog({
+      time: new Date().toLocaleTimeString(),
+      message: "=== 定时任务调度服务已停止 ===",
+      type: "info",
+    });
+  }
+
+  if (healthCheckInterval) {
+    clearInterval(healthCheckInterval);
+    healthCheckInterval = null;
+  }
+};
+
 // Debug: Log initial state when component mounts
 onMounted(() => {
   // Start the task scheduler after all functions are initialized
@@ -4314,6 +4340,7 @@ onMounted(() => {
   window.scheduledTasks = () => scheduledTasks.value;
   window.clearLogs = clearLogs;
   window.getLogs = () => logs.value;
+  window.stopScheduler = stopScheduler;
 });
 
 // Cleanup countdown interval on unmount
